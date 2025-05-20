@@ -1,8 +1,19 @@
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+
 import { AppModule } from './app.module';
+import { envs } from './config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  await app.listen(3001);
+  const logger = new Logger('AuthMS-Main');
+  const app = await NestFactory.createMicroservice<MicroserviceOptions>(AppModule, {
+    transport: Transport.NATS,
+    options: {
+      servers: envs.NATS_SERVERS,
+    },
+  });
+  await app.listen();
+  logger.log(`Auth Microservice is running on port ${envs.PORT}`);
 }
 bootstrap();
