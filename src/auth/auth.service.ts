@@ -1,9 +1,13 @@
 import { HttpStatus, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { PrismaClient } from '@prisma/client';
+import { JwtService } from '@nestjs/jwt';
 
 import { BcryptAdapter } from '../adapter/bcryptjs';
 import { LoginUserDto, RegisterUserDto } from '../dto';
+import { envs } from '../config';
+
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService extends PrismaClient implements OnModuleInit {
@@ -11,9 +15,35 @@ export class AuthService extends PrismaClient implements OnModuleInit {
     private readonly logger = new Logger(AuthService.name);
     private readonly bcryptAdapter = new BcryptAdapter();
 
+    constructor(private readonly jwtService: JwtService) {
+        super();
+    }
+
     async onModuleInit() {
         await this.$connect();
         this.logger.log('Connected to MongoDB');
+    }
+
+    async signJWT(payload: JwtPayload) {
+        return this.jwtService.sign(payload)
+    }
+
+    async verifyToken(token: string) {
+        try {
+            const { sub, iat, exp, ...user } = await this.jwtService.verify(token, {
+                secret: envs.JWT_SECRET
+            });
+            return {
+                user,
+                token: await this.signJWT(user)
+            };
+        } catch (error) {
+            console.log(error)
+            throw new RpcException({
+                status: HttpStatus.UNAUTHORIZED,
+                message: 'Invalid token',
+            })
+        }
     }
 
     async registerUser(registerUserDto: RegisterUserDto) {
@@ -39,11 +69,11 @@ export class AuthService extends PrismaClient implements OnModuleInit {
                 }
             })
 
-            const { password: _, updatedAt: __, ...rest } = newUser;
+            const { password: _, updatedAt: __, createdAt: ___, ...rest } = newUser;
 
             return {
                 user: rest,
-                token: 'abc'
+                token: await this.signJWT(rest)
             }
 
         } catch (error) {
@@ -63,8 +93,8 @@ export class AuthService extends PrismaClient implements OnModuleInit {
 
             if (!user) {
                 throw new RpcException({
-                    status: HttpStatus.NOT_FOUND,
-                    message: 'User not found',
+                    status: HttpStatus.UNAUTHORIZED,
+                    message: 'Invalid credentials',
                 })
             }
 
@@ -81,7 +111,7 @@ export class AuthService extends PrismaClient implements OnModuleInit {
 
             return {
                 user: rest,
-                token: 'abc'
+                token: await this.signJWT(rest)
             }
         } catch (error) {
             if (error instanceof RpcException) {

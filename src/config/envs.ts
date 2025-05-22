@@ -5,6 +5,7 @@ import { z } from 'zod';
 const envSchema = z.object({
     PORT: z.coerce.number().int().positive(),
     NATS_SERVERS: z.string().transform((str) => str.split(',')),
+    JWT_SECRET: z.string(),
     // NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 })
 
@@ -19,4 +20,5 @@ if (!success) {
 export const envs = {
     PORT: data.PORT,
     NATS_SERVERS: data.NATS_SERVERS,
+    JWT_SECRET: data.JWT_SECRET,
 }
