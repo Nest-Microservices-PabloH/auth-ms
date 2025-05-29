@@ -16,3 +16,5 @@ steps:
         "push",
         "southamerica-east1-docker.pkg.dev/tienda-microservicios-pabloh/image-registry/auth-ms:latest",
       ]
+options:
+  logging: CLOUD_LOGGING_ONLY
